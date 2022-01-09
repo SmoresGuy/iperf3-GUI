@@ -22,12 +22,12 @@ __VERSION__ = __version__ = '1.1'
 import subprocess, sys, os, tempfile
 from platform import system as system_name  # Returns the system/OS name
 import time
-import ConfigParser
+import configparser
 #import math
 #import json
 #import urllib2
-import Tkinter as tk
-import ttk
+import tkinter as tk
+from tkinter import ttk
 import meter as m
 import re
 import base64
@@ -367,12 +367,12 @@ class Mainframe(tk.Frame):
 #        self.geography_label.config(text='')
         self.meter.max_val = 0
 #        server_name = self.local_ip if self.is_ip_private(self.server.get()) else self.server.get()
-        for k in self.ip_info.keys(): 
-            self.print('checking ip address: %s, server name: %s target: %s' % (k, self.ip_info[k].get('server', None), server_name))
-            if server_name == self.ip_info[k].get('server', None):
-                self.print('FOUND! ip address: %s' % k)
-                self.ip_address = k
-                return
+#        for k in self.ip_info.keys(): 
+#            self.print('checking ip address: %s, server name: %s target: %s' % (k, self.ip_info[k].get('server', None), server_name))
+#            if server_name == self.ip_info[k].get('server', None):
+#                self.print('FOUND! ip address: %s' % k)
+#                self.ip_address = k
+#                return
         #no map yet
         self.map = None
         self.update_idletasks()
