@@ -259,6 +259,10 @@ class Mainframe(tk.Frame):
                                                                                 '' if upload else '-R',
                                                                                 fname.name)
         else:
+         if self.arg.server:
+            iperf_command = '%s -s -p %s' % (self.arg.iperf_exec,
+                                                  self.server_port.get())
+         else:
             iperf_command = '%s -c %s -p %s -P %s -O 1 -t %s %s '         % (self.arg.iperf_exec,
                                                                                 self.server.get(), 
                                                                                 self.server_port.get(),
@@ -326,7 +330,6 @@ class Mainframe(tk.Frame):
                 else:
 #                    if (int(self.threads.get()) > 1 and line.startswith('[SUM]')) or (int(self.threads.get()) == 1 and 'bits/sec' in line):
                     if (int(self.threads.get()) > 1 and '[SUM]' in line) or (int(self.threads.get()) == 1 and 'bits/sec' in line):
-                        self.print('YYY')
                         self.progress_bar["value"] += 1
                         speed = float(line.replace('[ ','[').replace('[ ','[').split()[5])
                         units = line.replace('[ ','[').replace('[ ','[').split()[6]
@@ -422,9 +425,8 @@ def main():
     parser.add_argument('-r','--range', action="store", type=int, default=10, help='range to start with in Mbps (default=%(default)s)')
     parser.add_argument('-R','--reset_range', action='store_false', help='Reset range to Default for Upload test (default = %(default)s)', default = True)
     parser.add_argument('-m','--max_mode', action='store', choices=max_mode_choices, help='Show Peak Mode (default = %(default)s)', default = max_mode_choices[2])
-    parser.add_argument('-G','--geography', action='store_false', help='Show map data (default = %(default)s)', default = True)
-    parser.add_argument('-g','--google_api_key', action="store", default=None, help='your google API key (to enable google maps) (default=%(default)s)')
     parser.add_argument('-D','--debug', action='store_true', help='debug mode', default = False)
+    parser.add_argument('-S','--server', action='store_true', help='run iperf in server mode', default = False)
     parser.add_argument('-V','--verbose', action='store_true', help='print everything', default = False)
     parser.add_argument('-v','--version', action='version',version='%(prog)s {version}'.format(version=__VERSION__))
 
