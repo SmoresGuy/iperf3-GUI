@@ -260,7 +260,7 @@ class Mainframe(tk.Frame):
                                                                                 fname.name)
         else:
          if self.arg.server:
-            iperf_command = '%s -s -p %s' % (self.arg.iperf_exec,
+            iperf_command = '%s -s -p %s --forceflush' % (self.arg.iperf_exec,
                                                   self.server_port.get())
          else:
             iperf_command = '%s -c %s -p %s -P %s -O 1 -t %s %s '         % (self.arg.iperf_exec,
@@ -278,7 +278,7 @@ class Mainframe(tk.Frame):
             self.download_label.config(text=message)   
         self.update_idletasks()
         try:
-            self.p = subprocess.Popen(iperf_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            self.p = subprocess.Popen(iperf_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=1)
         except Exception as e:
             self.msg_label.config(text='%s:' % sys.exc_info()[0].__name__)
 #            self.ping_label.config(text='(%s) %s' % (self.arg.iperf_exec,e))
@@ -309,7 +309,7 @@ class Mainframe(tk.Frame):
         total = 0
         while not self.done:
             try:
-                line = str(capture.readline())
+                line = str(capture.readline() )
                 if self.arg.verbose and line: self.print(line.strip())
                 if 'Done' in line:
                     break
