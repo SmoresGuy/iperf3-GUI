@@ -305,7 +305,7 @@ class Mainframe(tk.Frame):
         total = 0
         while not self.done:
             try:
-                line = capture.readline()
+                line = str(capture.readline())
                 if self.arg.verbose and line: self.print(line.strip())
                 if 'Done' in line:
                     break
@@ -324,10 +324,12 @@ class Mainframe(tk.Frame):
                         self.download_label.config(text=message)
                     break
                 else:
-                    if (int(self.threads.get()) > 1 and line.startswith('[SUM]')) or (int(self.threads.get()) == 1 and 'bits/sec' in line):
+#                    if (int(self.threads.get()) > 1 and line.startswith('[SUM]')) or (int(self.threads.get()) == 1 and 'bits/sec' in line):
+                    if (int(self.threads.get()) > 1 and '[SUM]' in line) or (int(self.threads.get()) == 1 and 'bits/sec' in line):
+                        self.print('YYY')
                         self.progress_bar["value"] += 1
-                        speed = float(line.decode('utf-8').replace('[ ','[').replace('[ ','[').split()[5])
-                        units = line.decode('utf-8').replace('[ ','[').replace('[ ','[').split()[6]
+                        speed = float(line.replace('[ ','[').replace('[ ','[').split()[5])
+                        units = line.replace('[ ','[').replace('[ ','[').split()[6]
                         if 'receiver' in line:
                             total = speed
                             self.print("Total: %s %s" % (total, units))
