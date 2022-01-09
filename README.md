@@ -1,65 +1,36 @@
 Graphical User Interface for iperf3
 ===================================
 
-![screenshot](https://github.com/NickWaterton/iperf3-GUI/blob/master/Screenshot%202018-04-30%2015.27.12.png "Screenshot")
-
-This is a python 2.7 program to give a graphical front end to iperf3
-
-**NOTE: This is a python 2.7 program**
-
-If you want to use it with python 3.xx some work will need to be done.
-
-Tested on Ubuntu 14.04, and Windows 10, **no guarantees** on anything else!
-
-*The meter.py code was found on the net somewhere and modified by me, so if you recognize it - credit to whoever you are*
-
-See https://iperf.fr/iperf-servers.php for details of the servers included as defaults.
+This is a python 3 program to give a graphical front end to local iperf3 tests
 
 ## Revision History
+
+V1.3 - forked from NickWaterton and removed all internet related and ping stuff, ported to python3
 V1.2 - Added Yandex maps service due to impending google requirement for API key (both services now supported)
 V1.1 - Big re-write with new features, including google maps
 V1.0 : First release
 
-*NOTE: You are responsible for complying with all google/Yandex Terms of Service*
 
 ## Introduction
 This program has the following features:
 * enter your own server ip/fqdn
-* pre-sets for public iperf3 servers
 * ports configurable (and presets)
 * several (not all) options graphically configurable
 * large gauge display
 * auto ranging
 * works on windows or linux
-* shows ping values
 * gives download and upload speeds
-* shows Distance/City/Country of server
-* shows map of geography
-* saves data in config.ini file
-
-![screenshot](https://github.com/NickWaterton/iperf3-GUI/blob/master/Screenshot%202018-04-30%2014.48.08.png "Screenshot")
 
 ## Pre-Requisites
 You need iperf3 installed. It can be downloaded from here: https://iperf.fr/iperf-download.php
 
-## Dependencies
-The program will optionally use pyping if you have it installed, otherwise it uses plain old ping.
-
-See:https://pypi.org/project/pyping/
-install with `pip install pyping`
-
-if you don't have a google API key, and you want to use maps, the program will attempt to use the free Yandex service (because OpenStreetMaps is hard to use), which requires the use of PIL/pillow to convert the map image format. if you don't have a google API key, or PIL/pillow, maps will be disabled.
-```bash
-<sudo> pip install pillow
-```
-*NOTE:* This may not work on some platforms
 
 ## Install
-First you need python 2.7 installed. **This program will not work with Python 3.x without some work**
+First you need python 3.x installed
 
 now clone the repository from GitHub (obviously you need `git` installed)
 ```bash
-git clone https://github.com/NickWaterton/iperf3-GUI.git
+git clone https://github.com/onemarcfifty/iperf3-GUI.git
 cd iperf3-GUI
 ```
 You should now have the program `iperf.py` - make sure the file is executable
@@ -83,9 +54,6 @@ optional arguments:
   -ip [IP_ADDRESS [IP_ADDRESS ...]], --ip_address [IP_ADDRESS [IP_ADDRESS ...]]
                         default server address('s) can be a list
                         (default=[u'192.168.100.119'])
-  -l LOCAL_IP, --local_ip LOCAL_IP
-                        local public ip address, if not given, will be fetched
-                        automatically (default=None)
   -p PORT, --port PORT  server port (default=5201)
   -r RANGE, --range RANGE
                         range to start with in Mbps (default=10)
@@ -93,10 +61,6 @@ optional arguments:
                         True)
   -m {OFF,Track,Peak}, --max_mode {OFF,Track,Peak}
                         Show Peak Mode (default = Peak)
-  -G, --geography       Show map data (default = True)
-  -g GOOGLE_API_KEY, --google_api_key GOOGLE_API_KEY
-                        your google API key (to enable google maps)
-                        (default=None)
   -D, --debug           debug mode
   -V, --verbose         print everything
   -v, --version         show program's version number and exit
