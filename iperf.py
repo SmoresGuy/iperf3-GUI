@@ -6,11 +6,13 @@ N Waterton V 1.0 19th April 2018: initial release
 N Waterton V 1.1 26th April 2018: Added geographic data
 N Waterton V 1.2 4th May 2018: Added Yandex maps service due to impending google API key requirement.
 
-Onemarcfifty 2022-01-09:    removed internet functions, 
-                            local op only
-                            removed ping
-Onemarcfifty 2022-01-09: continuous server operation
-
+onemarcfifty 2022-01-09: removed internet functions, 
+                         local operation only
+                         removed ping
+                         ported to python3
+onemarcfifty 2022-01-09: continuous server operation
+onemarcfifty 2023-04-22: added more options and streamlined server mode
+                         added comments
 '''
 
 from __future__ import absolute_import
@@ -19,32 +21,42 @@ from __future__ import unicode_literals
 
 __VERSION__ = __version__ = '1.1'
 
-import subprocess, sys, os, tempfile
+import subprocess, sys, tempfile
 from platform import system as system_name  # Returns the system/OS name
 import time
-import configparser
-#import math
-#import json
-#import urllib2
 import tkinter as tk
 from tkinter import ttk
 import meter as m
-import re
-import base64
+import psutil
+import sys
+import select
 
 class Mainframe(tk.Frame):
     
     def __init__(self,master, arg=None, *args,**kwargs):
-        #super(Mainframe,self).__init__(master,*args,**kwargs)
         tk.Frame.__init__(self, master, *args,**kwargs)
         
-        self.ip_address = None # ip address of current remote server
-        self.arg = arg
+        self.ip_address = None      # ip address of current remote server
+        self.arg = arg              # the command line arguments      
+        self.state = 'normal'
         self.master = master
         self.ip_info = {}
-        self.meter_size = 300 #meter is square
+        self.meter_size = 300       # meter is square
         self.no_response = 'No Response from iperf3 Server'
-        self.server_list = ['iperf.he.net',
+
+        # in Server mode we create a list of local addresses that we can bind to
+        if self.arg.server:
+            self.server_list = []
+            net_if_stats = psutil.net_if_stats()
+            for interface, stats in net_if_stats.items():
+                if stats.isup: 
+                    addresses = psutil.net_if_addrs()[interface]
+                    ip_addresses = [addr.address for addr in addresses if addr.family == 2]
+                    self.server_list.append(ip_addresses)
+
+        # in Client mode we create a list of remote servers we can connect to
+        else:
+            self.server_list = ['iperf.he.net',
                             'bouygues.iperf.fr',
                             'ping.online.net',
                             'ping-90ms.online.net',
@@ -52,8 +64,8 @@ class Mainframe(tk.Frame):
                             'iperf.volia.net',
                             'iperf.it-north.net',
                             'iperf.biznetnetworks.com',
-                            #speedtest.wtnet.de,
                             'iperf.scottlinux.com']
+
         self.server_list[0:0] = self.arg.ip_address
         self.port_list   = ['5200',
                             '5201',
@@ -65,27 +77,23 @@ class Mainframe(tk.Frame):
                             '5207',
                             '5208',
                             '5209']
+
         self.max_options = ['OFF', 'Track Needle', 'Hold Peak']     
         self.max_range = 1000
         self.min_range = 10
         self.resolution = 10
-        #self.ranges = list(range(self.min_range, self.max_range+self.resolution, self.resolution))
         self.ranges = [10,30,50,100,200,400,600,800,1000]
         self.duration = tk.Variable()
         self.threads = tk.Variable()
         self.server = tk.Variable()
-        #self.server.trace('w', self.servercalback)
         self.server_port = tk.Variable()
         self.range = tk.Variable()
         self.reset_range = tk.Variable()
         self.threads.set('16')
         self.reset_range.set(self.arg.reset_range) 
 
-#        self.read_config_file() #load data if config file exists
-        self.msg_label = tk.Label(self, text="Pong:")
+        self.msg_label = tk.Label(self, text="Message:")
         self.msg_label.grid(row=0, sticky=tk.E)
-#        self.ping_label = tk.Label(self, anchor='w', width=60)
-#        self.ping_label.grid(row=0, column=1, columnspan=3, sticky=tk.W)
         
         tk.Label(self, text="Download:").grid(row=2, sticky=tk.E)
         self.download_label = tk.Label(self, anchor='w', width=60)
@@ -102,11 +110,22 @@ class Mainframe(tk.Frame):
         self.meter.grid(row=5, column=0, columnspan=4)
  
         tk.Label(self, text="Server:").grid(row=6, sticky=tk.E)
-        self.ipaddress= ttk.Combobox(self, textvariable=self.server, values=self.server_list, width=39)
+
+        if self.arg.server:
+            self.ipaddress= ttk.Combobox(self, 
+                                         state="readonly",
+                                         textvariable=self.server, 
+                                         values=self.server_list, 
+                                         width=39)
+        else:
+            self.ipaddress= ttk.Combobox(self, 
+                                         textvariable=self.server, 
+                                         values=self.server_list, 
+                                         width=39)
         self.ipaddress.current(0)
-        self.ipaddress.bind("<<ComboboxSelected>>", self.servercalback)
         self.ipaddress.grid(row=6, column=1, columnspan=2, sticky=tk.W)
-        self.servercalback()    #update current displayed map (if enabled)
+
+        # in server mode the combo is read only
         
         self.port= ttk.Combobox(self, textvariable=self.server_port, values=self.port_list, width=4)
         if self.arg.port in self.port_list:
@@ -172,6 +191,7 @@ class Mainframe(tk.Frame):
         sys.exit(0)
         
     def set_control_state(self, state):
+        self.state=state
         self.ipaddress.config(state=state)
         self.port.config(state=state)
         self.max_mode.config(state=state)
@@ -179,50 +199,47 @@ class Mainframe(tk.Frame):
         self.range_box.config(state=state)
         self.duration_scale.config(state=state)
         self.threads_scale.config(state=state)
-        self.start_button.config(state=state)
-        self.update_idletasks()
-                    
-    def is_ip_private(self,ip):
-        # https://en.wikipedia.org/wiki/Private_network
-
-        priv_lo = re.compile("^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-        priv_24 = re.compile("^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-        priv_20 = re.compile("^192\.168\.\d{1,3}.\d{1,3}$")
-        priv_16 = re.compile("^172.(1[6-9]|2[0-9]|3[0-1]).[0-9]{1,3}.[0-9]{1,3}$")
-
-        res = priv_lo.match(ip) or priv_24.match(ip) or priv_20.match(ip) or priv_16.match(ip)
-        return res is not None
         
+        # in disabled mode the start button becomes the stop button
+        #self.start_button.config(state=state)
+        if state=='disabled':
+            self.start_button.config(text="Stop")
+        else:
+            self.start_button.config(text="Start")
+        self.update_idletasks()
     
     def show_message(self, message, error=False):
         if error:
-            self.msg_label.config(text='Error:')
+            self.msg_label.config(text=f'Error: {message}')
         else:
             self.msg_label.config(text='')
-#        self.ping_label.config(text=message)
         self.update_idletasks()
-        
+
+    def stop_button_clicked(self):
+        self.set_control_state('normal')
+        try:
+            self.p.terminate()
+            self.setmeter(0)
+            self.update_idletasks()
+        except (tk.TclError, AttributeError):
+            pass
         
     def run_iperf(self):
+        if self.state=='disabled':
+            self.stop_button_clicked()
+            return
         if self.server.get() == self.no_response:
             self.show_message('Please select/enter a vaild iperf3 server', True)
             self.update_idletasks()
             return
-        self.map = None
         self.show_message('Testing', False)
         self.download_label.config(text='', width=60)
         self.upload_label.config(text='', width=60)
         self.meter.draw_bezel() #reset bezel to default
         self.set_control_state('disabled')
         self.update_idletasks()
-        
-#        result, message, ip_address = self.ping(self.server.get())
-#        if not result:
-#            self.show_message('Could not ping server: %s' % self.server.get(), True)
-#            self.set_control_state('normal')
-#            return
-#        self.show_message(message)
-        self.update_idletasks()
+       
+#        self.update_idletasks()
         
         if len(self.run_iperf3(upload=False)) != 0 and not self.done: #if we get some results (not an error)
             if int(self.reset_range.get()) == 1:
@@ -260,15 +277,16 @@ class Mainframe(tk.Frame):
                                                                                 fname.name)
         else:
          if self.arg.server:
-            iperf_command = '%s -s -p %s --forceflush' % (self.arg.iperf_exec,
-                                                  self.server_port.get())
+            iperf_command = '%s -s -p %s -B %s --forceflush' % (self.arg.iperf_exec,
+                                                                self.server_port.get(),
+                                                                self.server.get())
          else:
             iperf_command = '%s -c %s -p %s -P %s -O 1 -t %s %s '         % (self.arg.iperf_exec,
-                                                                                self.server.get(), 
-                                                                                self.server_port.get(),
-                                                                                self.threads.get(),
-                                                                                self.duration.get(),
-                                                                                '' if upload else '-R')
+                                                                             self.server.get(), 
+                                                                             self.server_port.get(),
+                                                                             self.threads.get(),
+                                                                             self.duration.get(),
+                                                                             '' if upload else '-R')
         
         self.print("command: %s" % iperf_command)
         message = 'Attempting connection - Please Wait'
@@ -281,7 +299,6 @@ class Mainframe(tk.Frame):
             self.p = subprocess.Popen(iperf_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=1)
         except Exception as e:
             self.msg_label.config(text='%s:' % sys.exc_info()[0].__name__)
-#            self.ping_label.config(text='(%s) %s' % (self.arg.iperf_exec,e))
             print('Error in command: %s\r\n%s' % (iperf_command,e))
             return []
          
@@ -309,8 +326,18 @@ class Mainframe(tk.Frame):
         total = 0
         while not self.done:
             try:
-                line = str(capture.readline() )
-                if self.arg.verbose and line: self.print(line.strip())
+                # allow user interaction, e.g. stop button
+                self.update() 
+                self.update_idletasks()
+
+                # make non-blocking readline
+                rlist, _, _ = select.select([capture], [], [], 0.5)
+                if rlist:
+                    line = str(capture.readline() )
+                    if self.arg.verbose and line: self.print(line.strip())
+                else:
+                    line=''
+                    continue
                 if 'Done' in line:
                     break
                 if 'Connecting' in line:
@@ -361,27 +388,6 @@ class Mainframe(tk.Frame):
         if self.arg.debug:
             print(str)
             
-        
-    def servercalback(self, *args):
-        #server selection changed
-        #if self.local_ip == '': return
-        self.print('Server has changed to: %s' % self.server.get())
-        self.show_message('')
-        self.download_label.config(text='')
-        self.upload_label.config(text='')
-#        self.geography_label.config(text='')
-        self.meter.max_val = 0
-#        server_name = self.local_ip if self.is_ip_private(self.server.get()) else self.server.get()
-#        for k in self.ip_info.keys(): 
-#            self.print('checking ip address: %s, server name: %s target: %s' % (k, self.ip_info[k].get('server', None), server_name))
-#            if server_name == self.ip_info[k].get('server', None):
-#                self.print('FOUND! ip address: %s' % k)
-#                self.ip_address = k
-#                return
-        #no map yet
-        self.map = None
-        self.update_idletasks()
-            
     def updaterange(self, *args):
         self.setrange(self.range.get())
         
@@ -420,7 +426,7 @@ def main():
     max_mode_choices = ['OFF', 'Track', 'Peak']
     parser = argparse.ArgumentParser(description='Iperf3 GUI Network Speed Tester')
     parser.add_argument('-I','--iperf_exec', action="store", default='iperf3', help='location and name of iperf3 executable (default=%(default)s)')
-    parser.add_argument('-ip','--ip_address', action="store", nargs='*', default=['192.168.139.143'], help='default server address(\'s) can be a list (default=%(default)s)')
+    parser.add_argument('-ip','--ip_address', action="store", nargs='*', default=[], help='default server address(\'s) can be a list (default=%(default)s)')
     parser.add_argument('-p','--port', action="store", default='5201', help='server port (default=%(default)s)')
     parser.add_argument('-r','--range', action="store", type=int, default=10, help='range to start with in Mbps (default=%(default)s)')
     parser.add_argument('-R','--reset_range', action='store_false', help='Reset range to Default for Upload test (default = %(default)s)', default = True)
