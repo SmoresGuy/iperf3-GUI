@@ -30,6 +30,8 @@ import meter as m
 import psutil
 import sys
 import select
+from datetime import datetime
+
 
 # #######################################
 # The Mainframe class is the graphical
@@ -249,6 +251,7 @@ class Mainframe(tk.Frame):
     # and return to idle ('normal') operation
     def stop_button_clicked(self):
         self.set_control_state('normal')
+        self.done=True
         try:
             self.p.terminate()
             self.setmeter(0)
@@ -379,6 +382,16 @@ class Mainframe(tk.Frame):
         results_list = []
         units='bits/s'
         total = 0
+        ID_List=[]
+        if self.arg.server:
+            threadCount=0
+        else:
+            threadCount=int(self.threads.get())
+
+        if self.arg.log:
+            port=self.server_port.get()
+            logfile=open(f'iperf3-{port}.csv','w')
+
         while not self.done:
             try:
                 # allow user interaction, e.g. stop button
@@ -410,12 +423,25 @@ class Mainframe(tk.Frame):
                         self.download_label.config(text=message)
                     break
                 else:
-#                    if (int(self.threads.get()) > 1 and line.startswith('[SUM]')) or (int(self.threads.get()) == 1 and 'bits/sec' in line):
-                    if (int(self.threads.get()) > 1 and '[SUM]' in line) or (int(self.threads.get()) == 1 and 'bits/sec' in line):
+                    # let's find out how many Threads we have if we are in server mode
+                    if self.arg.server:
+                        if '[' in line:
+                            IDSubString=line[3:6]
+                            if (IDSubString != 'SUM') and (IDSubString != ' ID') and (not (IDSubString in ID_List)):
+                                threadCount += 1
+                                ID_List.append(IDSubString)
+                    else:
+                        threadCount=int(self.threads.get())
+                    if (threadCount > 1 and '[SUM]' in line) or (threadCount == 1 and 'bits/sec' in line):
                         if not self.arg.server:
                             self.progress_bar["value"] += 1
                         speed = float(line.replace('[ ','[').replace('[ ','[').split()[5])
                         units = line.replace('[ ','[').replace('[ ','[').split()[6]
+                        if self.arg.log:
+                            now = datetime.now()
+                            current_time = now.strftime("%H:%M:%S")
+                            logfile.write(f'{current_time},{speed},{units}\n')
+                            logfile.flush()
                         if 'receiver' in line:
                             total = speed
                             self.print("Total: %s %s" % (total, units))
@@ -494,6 +520,7 @@ def main():
     parser.add_argument('-S','--server', action='store_true', help='run iperf in server mode', default = False)
     parser.add_argument('-V','--verbose', action='store_true', help='print everything', default = False)
     parser.add_argument('-v','--version', action='version',version='%(prog)s {version}'.format(version=__VERSION__))
+    parser.add_argument('-L','--log', action='store_true',help='log csv into iperf-portnumber.csv', default = False)
 
     arg = parser.parse_args()
     if arg.verbose: arg.debug=True
