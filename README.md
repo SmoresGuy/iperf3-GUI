@@ -4,6 +4,8 @@
 
 This is a graphical front end in python 3 for iperf3
 
+![iperf_screenshot.png](iperf_screenshot.png)
+
 ## Introduction
 
 This program has the following features:
@@ -60,6 +62,4 @@ optional arguments:
   -v, --version         show program's version number and exit
 ```
 
-You can now run iperf3 tests from the GUI:
-
-![iperf_screenshot.png](iperf_screenshot.png)
+You can now run iperf3 tests from the GUI
