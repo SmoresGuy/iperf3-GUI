@@ -4,7 +4,11 @@
 
 This is a graphical front end in python 3 for iperf3
 
+**Client Mode:** <br>
 ![iperf_screenshot.png](iperf_screenshot.png)
+
+**Server Mode:** <br>
+![iperf_screenshot_server.png](iperf_screenshot_server.png)
 
 ## Introduction
 
