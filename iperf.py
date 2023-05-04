@@ -211,7 +211,7 @@ class Mainframe(tk.Frame):
             time.sleep(1)
         except AttributeError:
             pass
-        self.master.destroy()
+        #self.master.destroy()
         sys.exit(0)
 
     # set_control_state puts all visual elements on the form
@@ -239,7 +239,6 @@ class Mainframe(tk.Frame):
     # show_message displays a message in the top label
     # on the frame
     def show_message(self, message, error=False):
-        print (f'M {message}')
         if error:
             self.msg_label.config(text=f'Error: {message}')
         else:
@@ -262,7 +261,6 @@ class Mainframe(tk.Frame):
     # run_iperf is called when the Start button is clicked.
     # This is where we spawn the iperf3 process
     def run_iperf(self):
-
         # in disabled mode, the Start button is actually
         # the Stop button. In this case we call the 
         # stop_button_clicked function and exit
@@ -283,7 +281,7 @@ class Mainframe(tk.Frame):
         self.meter.draw_bezel() #reset bezel to default
         self.set_control_state('disabled')
         self.update_idletasks()
-        
+
         # now we actually call the iperf3 function
         # in Client mode we do a Download first, then
         # an upload. In Server mode we just wait
@@ -303,8 +301,9 @@ class Mainframe(tk.Frame):
                     self.server.set(self.no_response)
 
         # After iperf3 terminates, we reset the frame to idle/normal
-        self.set_control_state('normal')
-        self.update_idletasks()
+        if not self.done:
+            self.update()
+            self.set_control_state('normal')
 
     # run_iperf spawns the iperf3 process
     def run_iperf3(self, upload=False):
@@ -350,7 +349,7 @@ class Mainframe(tk.Frame):
         else:
             self.msg_label.config(text='Waiting for connections')   
         try:
-            self.p = subprocess.Popen(iperf_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=1)
+            self.p = subprocess.Popen(iperf_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=0)
         except Exception as e:
             self.msg_label.config(text='%s:' % sys.exc_info()[0].__name__)
             print('Error in command: %s\r\n%s' % (iperf_command,e))
@@ -497,8 +496,13 @@ class App(tk.Tk):
     def __init__(self, arg):
         #super(App,self).__init__()
         tk.Tk.__init__(self)
-        self.title('Iperf3 Network Speed Meter (V %s)' % __VERSION__)
-        Mainframe(self, arg=arg).grid()
+        #self.title('Iperf3 Network Speed Meter (V %s)' % __VERSION__)
+        self.title(f'{arg.title}')
+        f=Mainframe(self, arg=arg)
+        f.grid()
+        if arg.autostart:
+            f.run_iperf()
+        
 
 # #######################################
 # The main function which takes the
@@ -521,6 +525,8 @@ def main():
     parser.add_argument('-V','--verbose', action='store_true', help='print everything', default = False)
     parser.add_argument('-v','--version', action='version',version='%(prog)s {version}'.format(version=__VERSION__))
     parser.add_argument('-L','--log', action='store_true',help='log csv into iperf-portnumber.csv', default = False)
+    parser.add_argument('-T','--title', action="store", default='Iperf3 Network Speed Meter', help='Title of the GUI Window (default=%(default)s)')
+    parser.add_argument('-A','--autostart', action='store_true', help='Start capture autmatically', default = False)
 
     arg = parser.parse_args()
     if arg.verbose: arg.debug=True
