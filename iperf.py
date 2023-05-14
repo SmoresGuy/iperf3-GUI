@@ -242,7 +242,7 @@ class Mainframe(tk.Frame):
         if error:
             self.msg_label.config(text=f'Error: {message}')
         else:
-            self.msg_label.config(text='')
+            self.msg_label.config(text=f'{message}')
         self.update_idletasks()
 
     # When the stop button has been clicked, we interrupt
@@ -301,7 +301,7 @@ class Mainframe(tk.Frame):
                     self.server.set(self.no_response)
 
         # After iperf3 terminates, we reset the frame to idle/normal
-        if not self.done:
+        if self and not self.done:
             self.update()
             self.set_control_state('normal')
 
@@ -330,7 +330,7 @@ class Mainframe(tk.Frame):
                                                                 self.server_port.get(),
                                                                 self.server.get())
          else:
-            iperf_command = '%s -c %s -p %s -P %s -O 1 -t %s %s '         % (self.arg.iperf_exec,
+            iperf_command = '%s -c %s -p %s -P %s -O 1 -t %s %s --forceflush'         % (self.arg.iperf_exec,
                                                                              self.server.get(), 
                                                                              self.server_port.get(),
                                                                              self.threads.get(),
@@ -348,22 +348,41 @@ class Mainframe(tk.Frame):
             self.update_idletasks()
         else:
             self.msg_label.config(text='Waiting for connections')   
-        try:
-            self.p = subprocess.Popen(iperf_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=0)
-        except Exception as e:
-            self.msg_label.config(text='%s:' % sys.exc_info()[0].__name__)
-            print('Error in command: %s\r\n%s' % (iperf_command,e))
-            return []
-         
-        if not self.arg.server:
-            message = 'Testing'
-            if upload:
-                self.upload_label.config(text=message)
-            else:
-                self.download_label.config(text=message)   
 
-        # once the process is spawned, we follow it in the progress function
-        with fname:
+        keepRunning=True
+
+        while keepRunning:
+
+            # if we come back from an error situation we try to kill the old process 
+            # and spawn a new one
+            if self.arg.server:
+                try:
+                    self.p.terminate()
+                    self.setmeter(0)
+                    self.update_idletasks()
+                except (tk.TclError, AttributeError):
+                    pass
+
+            try:
+                self.p = subprocess.Popen(iperf_command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,bufsize=0)
+            except Exception as e:
+                self.msg_label.config(text='%s:' % sys.exc_info()[0].__name__)
+                print('Error in command: %s\r\n%s' % (iperf_command,e))
+                self.done=True
+                return []
+         
+            if not self.arg.server:
+                keepRunning = False
+                message = 'Testing'
+                if upload:
+                    self.upload_label.config(text=message)
+                else:
+                    self.download_label.config(text=message)   
+            else:
+                keepRunning = not self.done
+
+            # once the process is spawned, we follow it in the progress function
+            #with fname:
             results_list = self.progress(fname if system_name().lower()=='windows' else self.p.stdout, upload)
 
         # when we are done, we terminate the process
@@ -391,8 +410,15 @@ class Mainframe(tk.Frame):
             port=self.server_port.get()
             logfile=open(f'iperf3-{port}.csv','w')
 
+        last_action_time = time.time()
         while not self.done:
             try:
+                # if nothing has happened for 3 seconds, reset the meter
+                if time.time() - last_action_time >= 3:
+                    last_action_time = time.time()
+                    self.meter.smooth_set(0)
+                    self.show_message("IDLE",False)
+
                 # allow user interaction, e.g. stop button
                 self.update() 
                 self.update_idletasks()
@@ -410,6 +436,7 @@ class Mainframe(tk.Frame):
                 if 'Connecting' in line:
                     continue
                 if 'error' in line:
+                    print ("*****ERROR****** %s" % line)
                     self.print("%s" % line)
                     self.show_message(line.strip(), True)
                     try:
@@ -422,6 +449,8 @@ class Mainframe(tk.Frame):
                         self.download_label.config(text=message)
                     break
                 else:
+                    self.show_message("WORKING",False)
+                    last_action_time = time.time()
                     # let's find out how many Threads we have if we are in server mode
                     if self.arg.server:
                         if '[' in line:
@@ -457,12 +486,14 @@ class Mainframe(tk.Frame):
                                 self.setrange(next((i for  i in self.ranges if i>=speed),self.ranges[-1]))  #increase range if possible
                             self.setmeter(speed)
                             self.setunits(units)
+                            self.update()
                             self.quit.update()
                             self.update_idletasks()
                         results_list.append(speed)
             except tk.TclError:
                 break
-        capture.close()
+        if self.done:
+            capture.close()
         return results_list
         
     def print(self, str):
@@ -484,8 +515,8 @@ class Mainframe(tk.Frame):
         
     def setmeter(self,value):
         value = int(value)
-        #self.meter.set(value, True)
-        self.meter.smooth_set(value, True)
+        self.meter.set(value, True)
+        #self.meter.smooth_set(value, True)
 
 # #######################################
 # The main Application class that is 
@@ -498,11 +529,13 @@ class App(tk.Tk):
         tk.Tk.__init__(self)
         #self.title('Iperf3 Network Speed Meter (V %s)' % __VERSION__)
         self.title(f'{arg.title}')
-        f=Mainframe(self, arg=arg)
-        f.grid()
+        self.xframe=Mainframe(self, arg=arg)
+        self.xframe.grid()
         if arg.autostart:
-            f.run_iperf()
-        
+            self.xframe.run_iperf()
+    def destroy(self) -> None:
+        self.xframe.done=True
+        return super().destroy()    
 
 # #######################################
 # The main function which takes the
