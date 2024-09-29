@@ -13,6 +13,9 @@ onemarcfifty 2022-01-09: removed internet functions,
 onemarcfifty 2022-01-09: continuous server operation
 onemarcfifty 2023-04-22: added more options and streamlined server mode
                          added comments
+smoresguy   2024-09-22:     updated to use smoothing
+                            added TELUS servers
+
 '''
 
 from __future__ import absolute_import
@@ -45,13 +48,14 @@ class Mainframe(tk.Frame):
     # draws the frame grid elements
     def __init__(self,master, arg=None, *args,**kwargs):
         tk.Frame.__init__(self, master, *args,**kwargs)
-        
+
         self.ip_address = None      # ip address of current remote server
         self.arg = arg              # the command line arguments      
         self.state = 'normal'       # the state can be 'normal' or 'disabled'
         self.master = master        # back link to the tk.App
         self.meter_size = 300       # Dimensions of the meter element
         self.no_response = 'No Response from iperf3 Server'
+        tk.Frame.__init__(self, padx=5,pady=5)
 
         # in Server mode we create a list of local IP addresses that we can bind to
         if self.arg.server:
@@ -65,7 +69,8 @@ class Mainframe(tk.Frame):
 
         # in Client mode we create a list of remote servers we can connect to
         else:
-            self.server_list = ['iperf.he.net',
+            self.server_list = ['204.191.4.91',
+                            'iperf.he.net',
                             'bouygues.iperf.fr',
                             'ping.online.net',
                             'ping-90ms.online.net',
@@ -76,7 +81,8 @@ class Mainframe(tk.Frame):
                             'iperf.scottlinux.com']
 
         self.server_list[0:0] = self.arg.ip_address
-        self.port_list   = ['5200',
+        self.port_list   = ['5001',
+                            '5200',
                             '5201',
                             '5202',
                             '5203',
@@ -88,10 +94,10 @@ class Mainframe(tk.Frame):
                             '5209']
 
         self.max_options = ['OFF', 'Track Needle', 'Hold Peak']     
-        self.max_range = 1000
+        self.max_range = 30000
         self.min_range = 10
         self.resolution = 10
-        self.ranges = [10,30,50,100,200,400,600,800,1000]
+        self.ranges = [10,30,50,100,200,400,600,800,1000,2000, 3000, 5000, 7000, 10000, 15000, 20000, 25000, 30000]
         self.server = tk.Variable()
         self.server_port = tk.Variable()
         self.range = tk.Variable()
@@ -270,7 +276,7 @@ class Mainframe(tk.Frame):
         
         # verify if the Server Address is valid
         if self.server.get() == self.no_response:
-            self.show_message('Please select/enter a vaild iperf3 server', True)
+            self.show_message('Please select/enter a valid iperf3 server', True)
             self.update_idletasks()
             return
 
@@ -414,7 +420,7 @@ class Mainframe(tk.Frame):
         while not self.done:
             try:
                 # if nothing has happened for 3 seconds, reset the meter
-                if time.time() - last_action_time >= 3:
+                if time.time() - last_action_time >= 5: #3 seconds is a bit choppy, 5 is smoother
                     last_action_time = time.time()
                     self.meter.smooth_set(0)
                     self.show_message("IDLE",False)
@@ -514,9 +520,9 @@ class Mainframe(tk.Frame):
         self.meter.units(value)
         
     def setmeter(self,value):
-        value = int(value)
-        self.meter.set(value, True)
-        #self.meter.smooth_set(value, True)
+        # value = int(value)
+        #self.meter.set(value, True)
+        self.meter.smooth_set(value, True)
 
 # #######################################
 # The main Application class that is 
@@ -549,9 +555,9 @@ def main():
     parser = argparse.ArgumentParser(description='Iperf3 GUI Network Speed Tester')
     parser.add_argument('-I','--iperf_exec', action="store", default='iperf3', help='location and name of iperf3 executable (default=%(default)s)')
     parser.add_argument('-ip','--ip_address', action="store", nargs='*', default=[], help='default server address(\'s) can be a list (default=%(default)s)')
-    parser.add_argument('-p','--port', action="store", default='5201', help='server port (default=%(default)s)')
-    parser.add_argument('-r','--range', action="store", type=int, default=10, help='range to start with in Mbps (default=%(default)s)')
-    parser.add_argument('-R','--reset_range', action='store_false', help='Reset range to Default for Upload test (default = %(default)s)', default = True)
+    parser.add_argument('-p','--port', action="store", default='5001', help='server port (default=%(default)s)')
+    parser.add_argument('-r','--range', action="store", type=int, default=30, help='range to start with in Mbps (default=%(default)s)')
+    parser.add_argument('-R','--reset_range', action='store_false', help='Reset range to Default for Upload test (default = %(default)s)', default = False)
     parser.add_argument('-m','--max_mode', action='store', choices=max_mode_choices, help='Show Peak Mode (default = %(default)s)', default = max_mode_choices[2])
     parser.add_argument('-D','--debug', action='store_true', help='debug mode', default = False)
     parser.add_argument('-S','--server', action='store_true', help='run iperf in server mode', default = False)
@@ -559,7 +565,7 @@ def main():
     parser.add_argument('-v','--version', action='version',version='%(prog)s {version}'.format(version=__VERSION__))
     parser.add_argument('-L','--log', action='store_true',help='log csv into iperf-portnumber.csv', default = False)
     parser.add_argument('-T','--title', action="store", default='Iperf3 Network Speed Meter', help='Title of the GUI Window (default=%(default)s)')
-    parser.add_argument('-A','--autostart', action='store_true', help='Start capture autmatically', default = False)
+    parser.add_argument('-A','--autostart', action='store_true', help='Start capture automatically', default = False)
 
     arg = parser.parse_args()
     if arg.verbose: arg.debug=True
