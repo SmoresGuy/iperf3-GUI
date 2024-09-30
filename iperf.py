@@ -259,7 +259,7 @@ class Mainframe(tk.Frame):
         self.done=True
         try:
             self.p.terminate()
-            self.setmeter(0)
+            self.setmeter(0,'')
             self.update_idletasks()
         except (tk.TclError, AttributeError):
             pass
@@ -364,7 +364,7 @@ class Mainframe(tk.Frame):
             if self.arg.server:
                 try:
                     self.p.terminate()
-                    self.setmeter(0)
+                    self.setmeter(0, '')
                     self.update_idletasks()
                 except (tk.TclError, AttributeError):
                     pass
@@ -394,7 +394,7 @@ class Mainframe(tk.Frame):
         # when we are done, we terminate the process
         try:
             self.p.terminate()
-            self.setmeter(0)
+            self.setmeter(0, '')
             self.update_idletasks()
         except (tk.TclError, AttributeError):
             pass
@@ -422,7 +422,7 @@ class Mainframe(tk.Frame):
                 # if nothing has happened for 3 seconds, reset the meter
                 if time.time() - last_action_time >= 5: #3 seconds is a bit choppy, 5 is smoother
                     last_action_time = time.time()
-                    self.meter.smooth_set(0)
+                    self.meter.smooth_set(0,"")
                     self.show_message("IDLE",False)
 
                 # allow user interaction, e.g. stop button
@@ -490,7 +490,7 @@ class Mainframe(tk.Frame):
                             #update range if value is too high
                             if speed > self.meter.range+(self.meter.range/20):  #if more than 5% over-range
                                 self.setrange(next((i for  i in self.ranges if i>=speed),self.ranges[-1]))  #increase range if possible
-                            self.setmeter(speed)
+                            self.setmeter(speed, units)
                             self.setunits(units)
                             self.update()
                             self.quit.update()
@@ -519,10 +519,10 @@ class Mainframe(tk.Frame):
     def setunits(self,value):
         self.meter.units(value)
         
-    def setmeter(self,value):
+    def setmeter(self,value, units):
         # value = int(value)
         #self.meter.set(value, True)
-        self.meter.smooth_set(value, True)
+        self.meter.smooth_set(value, units, True)
 
 # #######################################
 # The main Application class that is 

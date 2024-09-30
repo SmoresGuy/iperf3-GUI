@@ -137,19 +137,32 @@ class Meter(tk.Canvas):
     def units(self,text):
         self.itemconfigure(self.unitsid,text = str(text))
         
-    def smooth_set(self, value, arc=False):
+    def smooth_set(self, value, units, arc=False):
         '''
         do a smooth update, rather than jump to value
         y += alpha * (x-y)  #low pass filter algorithm
         alpha defines response time
         '''
+
+
         alpha = 0.1
         result = self.current_value
-        while int(result) != int(value):
-            result += alpha * float(value-self.current_value)
-            self.set(int(result), arc)
-            time.sleep(0.01)
-            self.update_idletasks()
+
+        if units != "Gbits/sec" :
+
+            while int(result) != int(value):
+            #while round((result),2) != round(value,2) :
+                result += alpha * float(round(value,2)-self.current_value)
+                self.set(int(result), arc)
+                time.sleep(0.01)
+                self.update_idletasks()
+        else:
+            while round(result,2) != round(value,2):
+                #while round((result),2) != round(value,2) :
+                result += alpha * float(round(value,2)-self.current_value)
+                self.set(round(result,2), arc)
+                time.sleep(0.01)
+                self.update_idletasks()
         
     def set(self,value, arc=False):
         # call this to set the hand (jump to value)
